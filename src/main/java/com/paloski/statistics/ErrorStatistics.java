@@ -1,5 +1,7 @@
 package com.paloski.statistics;
 
+import com.paloski.annotation.ProxyInterface;
+
 import java.util.Objects;
 
 /**
