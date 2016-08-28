@@ -69,12 +69,30 @@ public final class Statistics {
 	}
 
 	/**
+	 * Obtains the success percentage of these statistics, between 1F for 100% and 0F for 0%.
+	 *
+	 * @return The percentage of runs that were successful based upon these statistics
+	 */
+	public float getSuccessPercent() {
+		return ((float) getSuccessCount()) / ((float) getEventCount());
+	}
+
+	/**
 	 * Obtains the number of errors recorded in this Statistics object.
 	 *
 	 * @return The number of errors
 	 */
 	public long getErrorCount() {
 		return mErrorStatistics.getErrorCount();
+	}
+
+	/**
+	 * Obtains the error percent of these statistics, between 1F for 100% and 0F for 0%.
+	 *
+	 * @return The percentage of runs that failed based upon these statistics.
+	 */
+	public float getErrorPercent() {
+		return ((float) getErrorCount()) / ((float) getEventCount());
 	}
 
 	/**
@@ -96,6 +114,16 @@ public final class Statistics {
 	 */
 	public SuccessStatistics getSuccessStatistics() {
 		return mSuccessStatistics;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("Total events: %d (%d (%.2f%%) Success %d (%.2f%%) Error)",
+							 getEventCount(),
+							 getSuccessCount(),
+							 getSuccessPercent() * 100,
+							 getErrorCount(),
+							 getErrorPercent() * 100);
 	}
 
 	@Override

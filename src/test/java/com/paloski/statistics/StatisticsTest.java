@@ -58,6 +58,20 @@ public final class StatisticsTest {
 	}
 
 	@Theory
+	public void getSuccessPercent_returnsValueEqualToSuccessCountOverTotal(final SuccessStatistics successStatistics,
+																		   final ErrorStatistics errorStatistics) {
+		final Statistics sut = new Statistics(successStatistics, errorStatistics);
+		assertThat(sut.getSuccessPercent()).isEqualTo(((float) successStatistics.getSuccessCount()) / (successStatistics.getSuccessCount() + errorStatistics.getErrorCount()));
+	}
+
+	@Theory
+	public void getErrorPercent_returnsValueEqualToErrorCountOverTotal(final SuccessStatistics successStatistics,
+																		   final ErrorStatistics errorStatistics) {
+		final Statistics sut = new Statistics(successStatistics, errorStatistics);
+		assertThat(sut.getErrorPercent()).isEqualTo(((float) errorStatistics.getErrorCount()) / (successStatistics.getSuccessCount() + errorStatistics.getErrorCount()));
+	}
+
+	@Theory
 	public void constructor_rejectsNullSuccessStats(final ErrorStatistics errorStatistics) {
 		expected.expect(NullPointerException.class);
 		new Statistics(null, errorStatistics);
@@ -116,5 +130,17 @@ public final class StatisticsTest {
 		//Check that they don't just memeq
 		assertThat(statsOne).isEqualTo(statsTwo);
 		assertThat(statsOne.hashCode()).isEqualTo(statsTwo.hashCode());
+	}
+
+	@Theory
+	public void toString_includesImportantInformation(final SuccessStatistics successStatistics,
+													  final ErrorStatistics errorStatistics) {
+		final Statistics sut = new Statistics(successStatistics, errorStatistics);
+
+		assertThat(sut.toString()).contains(Long.toString(sut.getEventCount()))
+								  .contains(Long.toString(sut.getSuccessCount()))
+								  .contains(Long.toString(sut.getErrorCount()));
+
+		System.out.println(sut.toString());
 	}
 }
