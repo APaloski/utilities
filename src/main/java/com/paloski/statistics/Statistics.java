@@ -83,7 +83,7 @@ public final class Statistics {
 	 * @return The number of errors
 	 */
 	public long getErrorCount() {
-		return mErrorStatistics.getErrorCount();
+		return mErrorStatistics.getTotalErrorCount();
 	}
 
 	/**

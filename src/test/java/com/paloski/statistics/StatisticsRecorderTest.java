@@ -7,6 +7,7 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -194,7 +195,7 @@ public final class StatisticsRecorderTest {
 	public void seededRecorder_seededRecorderStartsWithSeedValue(@FromDataPoints(DATA_POINTS__SUCCESS_COUNT) final long successCount,
 																 @FromDataPoints(DATA_POINTS__ERROR_COUNT) final long errorCount) {
 		final Statistics seed = new Statistics(SuccessStatistics.forSuccessCount(successCount),
-											   ErrorStatistics.forFailureCount(errorCount));
+											   ErrorStatistics.forUncategorizedFailureCount(errorCount));
 		final StatisticsRecorder seeded = StatisticsRecorder.newSeededRecorder(seed);
 		assertThat(seeded.takeSnapshot()).isEqualTo(seed);
 	}
@@ -202,9 +203,14 @@ public final class StatisticsRecorderTest {
 	@Theory
 	public void threadSafety_threadedRecordingCreatesCorrectCount(@FromDataPoints(DATA_POINTS__THREADING__SUCCESS_COUNT) final long successCount,
 																  @FromDataPoints(DATA_POINTS__THREADING__ERROR_COUNT) final long errorCount,
+																  @FromDataPoints(DATA_POINTS__THREADING__ERROR_COUNT) final long uncategorizedErrorCount,
 																  @FromDataPoints(DATA_POINTS__THREADING__THREAD_COUNT) final int threadCount) throws InterruptedException {
 		final ExecutorService service = Executors.newFixedThreadPool(threadCount);
 		final StatisticsRecorder recorder = StatisticsRecorder.newRecorder();
+
+		int expectedExceptions = 0;
+		int expectedIOExceptions = 0;
+		int expectedIllegalStateExceptions = 0;
 		try {
 			for (long x = 0; x < successCount; x++) {
 				service.execute(new Runnable() {
@@ -216,10 +222,37 @@ public final class StatisticsRecorderTest {
 			}
 
 			for (long x = 0; x < errorCount; x++) {
+				final Exception exp;
+
+				switch ((int) (x % 3)) {
+					case 0:
+						expectedExceptions++;
+						exp = new Exception();
+						break;
+					case 1:
+						expectedIOExceptions++;
+						exp = new IOException();
+						break;
+					case 2:
+						expectedIllegalStateExceptions++;
+						exp = new IllegalStateException();
+						break;
+					default:
+						throw new IllegalStateException("Hit unexpected number");
+				}
 				service.execute(new Runnable() {
 					@Override
 					public void run() {
-						recorder.recordError(new Exception());
+						recorder.recordError(exp);
+					}
+				});
+			}
+
+			for (long x = 0; x < uncategorizedErrorCount; x++) {
+				service.execute(new Runnable() {
+					@Override
+					public void run() {
+						recorder.recordError();
 					}
 				});
 			}
@@ -228,8 +261,18 @@ public final class StatisticsRecorderTest {
 			assertThat(service.awaitTermination(1, TimeUnit.MINUTES)).as(new TextDescription("Executor did not shutdown in the acceptable amount of time"))
 																	 .isTrue();
 			final Statistics stats = recorder.takeSnapshot();
-			assertThat(stats.getErrorCount()).isEqualTo(errorCount);
+			assertThat(stats.getErrorCount()).isEqualTo(errorCount + uncategorizedErrorCount);
 			assertThat(stats.getSuccessCount()).isEqualTo(successCount);
+
+			if(expectedExceptions != 0) {
+				assertThat(stats.getErrorStatistics().getCountOfExceptionTypes().get(Exception.class)).isEqualTo(expectedExceptions);
+			}
+			if(expectedIOExceptions != 0) {
+				assertThat(stats.getErrorStatistics().getCountOfExceptionTypes().get(IOException.class)).isEqualTo(expectedIOExceptions);
+			}
+			if(expectedIllegalStateExceptions != 0) {
+				assertThat(stats.getErrorStatistics().getCountOfExceptionTypes().get(IllegalStateException.class)).isEqualTo(expectedIllegalStateExceptions);
+			}
 
 		} finally {
 			service.shutdownNow();

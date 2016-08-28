@@ -1,6 +1,7 @@
 package com.paloski.statistics;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -16,13 +17,14 @@ public final class StatisticsRecorder {
 
 	private final ReadWriteLock mLock = new ReentrantReadWriteLock();
 
-	private final AtomicLong mSuccessCount;
-	private final AtomicLong mFailureCount;
+	private long mSuccessCount;
+	private long mUnattributedFailures;
+	private Map<Class<? extends Exception>, Long> mExceptionTypeMap = new HashMap<>();
 
 	private StatisticsRecorder(final long startingSuccess,
 							   final long startingFailure) {
-		mSuccessCount = new AtomicLong(startingSuccess);
-		mFailureCount = new AtomicLong(startingFailure);
+		mSuccessCount = startingSuccess;
+		mUnattributedFailures = startingFailure;
 	}
 
 	/**
@@ -62,7 +64,7 @@ public final class StatisticsRecorder {
 		final Lock writeLock = mLock.writeLock();
 		writeLock.lock();
 		try {
-			mSuccessCount.incrementAndGet();
+			mSuccessCount++;
 		} finally {
 			writeLock.unlock();
 		}
@@ -79,7 +81,26 @@ public final class StatisticsRecorder {
 		final Lock writeLock = mLock.writeLock();
 		writeLock.lock();
 		try {
-			mFailureCount.incrementAndGet();
+			Long currCount = mExceptionTypeMap.get(exp.getClass());
+			if(null == currCount) {
+				currCount = 0L;
+			}
+			mExceptionTypeMap.put(exp.getClass(), currCount + 1);
+		} finally {
+			writeLock.unlock();
+		}
+	}
+
+	/**
+	 * Records an unattributed error. This occurs when there is no distinct cause (such as an
+	 * exception) for an error, but instead some state was simply detected to be wrong during the
+	 * process.
+	 */
+	public void recordError() {
+		final Lock writeLock = mLock.writeLock();
+		writeLock.lock();
+		try {
+			mUnattributedFailures++;
 		} finally {
 			writeLock.unlock();
 		}
@@ -95,8 +116,8 @@ public final class StatisticsRecorder {
 		final Lock readLock = mLock.readLock();
 		readLock.lock();
 		try {
-			return new Statistics(SuccessStatistics.forSuccessCount(mSuccessCount.get()),
-								  ErrorStatistics.forFailureCount(mFailureCount.get()));
+			return new Statistics(SuccessStatistics.forSuccessCount(mSuccessCount),
+								  ErrorStatistics.forFailures(mUnattributedFailures, mExceptionTypeMap));
 		} finally {
 			readLock.unlock();
 		}

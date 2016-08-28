@@ -29,18 +29,18 @@ public final class StatisticsTest {
 
 	@DataPoints
 	public static List<ErrorStatistics> getErrorStats() {
-		return Arrays.asList(ErrorStatistics.forFailureCount(11),
-							 ErrorStatistics.forFailureCount(0),
-							 ErrorStatistics.forFailureCount(15),
-							 ErrorStatistics.forFailureCount(32),
-							 ErrorStatistics.forFailureCount(87));
+		return Arrays.asList(ErrorStatistics.forUncategorizedFailureCount(11),
+							 ErrorStatistics.forUncategorizedFailureCount(0),
+							 ErrorStatistics.forUncategorizedFailureCount(15),
+							 ErrorStatistics.forUncategorizedFailureCount(32),
+							 ErrorStatistics.forUncategorizedFailureCount(87));
 	}
 
 	@Theory
 	public void getEventCount_returnsSumOfSuccessAndError(final SuccessStatistics successStatistics,
 														  final ErrorStatistics errorStatistics) {
 		final Statistics sut = new Statistics(successStatistics, errorStatistics);
-		assertThat(sut.getEventCount()).isEqualTo(successStatistics.getSuccessCount() + errorStatistics.getErrorCount());
+		assertThat(sut.getEventCount()).isEqualTo(successStatistics.getSuccessCount() + errorStatistics.getTotalErrorCount());
 	}
 
 	@Theory
@@ -54,21 +54,21 @@ public final class StatisticsTest {
 	public void getErrorCount_returnedValueEqualToErrorStatus(final SuccessStatistics successStatistics,
 															  final ErrorStatistics errorStatistics) {
 		final Statistics sut = new Statistics(successStatistics, errorStatistics);
-		assertThat(sut.getErrorCount()).isEqualTo(errorStatistics.getErrorCount());
+		assertThat(sut.getErrorCount()).isEqualTo(errorStatistics.getTotalErrorCount());
 	}
 
 	@Theory
 	public void getSuccessPercent_returnsValueEqualToSuccessCountOverTotal(final SuccessStatistics successStatistics,
 																		   final ErrorStatistics errorStatistics) {
 		final Statistics sut = new Statistics(successStatistics, errorStatistics);
-		assertThat(sut.getSuccessPercent()).isEqualTo(((float) successStatistics.getSuccessCount()) / (successStatistics.getSuccessCount() + errorStatistics.getErrorCount()));
+		assertThat(sut.getSuccessPercent()).isEqualTo(((float) successStatistics.getSuccessCount()) / (successStatistics.getSuccessCount() + errorStatistics.getTotalErrorCount()));
 	}
 
 	@Theory
 	public void getErrorPercent_returnsValueEqualToErrorCountOverTotal(final SuccessStatistics successStatistics,
 																		   final ErrorStatistics errorStatistics) {
 		final Statistics sut = new Statistics(successStatistics, errorStatistics);
-		assertThat(sut.getErrorPercent()).isEqualTo(((float) errorStatistics.getErrorCount()) / (successStatistics.getSuccessCount() + errorStatistics.getErrorCount()));
+		assertThat(sut.getErrorPercent()).isEqualTo(((float) errorStatistics.getTotalErrorCount()) / (successStatistics.getSuccessCount() + errorStatistics.getTotalErrorCount()));
 	}
 
 	@Theory
@@ -140,7 +140,5 @@ public final class StatisticsTest {
 		assertThat(sut.toString()).contains(Long.toString(sut.getEventCount()))
 								  .contains(Long.toString(sut.getSuccessCount()))
 								  .contains(Long.toString(sut.getErrorCount()));
-
-		System.out.println(sut.toString());
 	}
 }
